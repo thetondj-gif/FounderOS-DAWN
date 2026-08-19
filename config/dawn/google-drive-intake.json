@@ -1,0 +1,49 @@
+{
+  "tenantKey": "deus-intus",
+  "mode": "READ_ONLY_REFERENCE_AND_STAGING",
+  "authority": {
+    "canonicalTruth": "PostgreSQL",
+    "driveRole": "source_evidence_staging_founder_view",
+    "qdrantRole": "rebuildable_semantic_index"
+  },
+  "buildPack": {
+    "folderId": "1DA__19XkeQpJIu_19h0_c63ik6dTP9Pf",
+    "name": "DAWN V4 Build Pack"
+  },
+  "sources": [
+    {
+      "key": "landing-control",
+      "kind": "google_sheet",
+      "id": "1QASRIh0kAcrU2QrSsgbRnymG9rFnH2kgeh92scTmWqE",
+      "name": "01 — DAWN V4 Data Landing Control",
+      "purpose": "Landing, staging and founder-readable evidence views"
+    },
+    {
+      "key": "founder-command-bridge",
+      "kind": "google_sheet",
+      "id": "1q2J7tve4uRrS1K-p4VIVLqbBsxvfUBgS4SihRL_z6Xs",
+      "name": "DAWN Founder Command Bridge",
+      "purpose": "Founder command interface; disabled until mission-loop canary passes"
+    },
+    {
+      "key": "intelligence-control-plane",
+      "kind": "google_sheet",
+      "id": "1EK-Fd1DaNVoDrkHtPYWNRYgEFnsT9pfaRiuSb8NHtZ0",
+      "name": "DAWN Intelligence Control Plane",
+      "purpose": "Reference and publish view for sector intelligence"
+    },
+    {
+      "key": "genesis-brain-pack",
+      "kind": "drive_file",
+      "id": "1eddrxHH2kgmJMAOUOXgxQ9vJhDGY6WBh",
+      "name": "DEUS_INTUS_TENANT_001_GENESIS_BRAIN_PACK",
+      "purpose": "V3 memory source; migration staging only"
+    }
+  ],
+  "rules": [
+    "Do not promote Drive content directly to canonical V4 memory.",
+    "Hash source content before evidence promotion.",
+    "Preserve tenant, source system, source record ID and source URI.",
+    "All external writes require the DAWN safety gate to be explicitly enabled."
+  ]
+}
