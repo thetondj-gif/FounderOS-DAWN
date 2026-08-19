@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=75", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "founderos-agent-runtime"
+version = "0.1.0"
+description = "FounderOS orchestration nucleus built on Microsoft Agent Framework"
+requires-python = ">=3.11"
+dependencies = [
+  "agent-framework-core==1.13.0",
+  "agent-framework-ollama==1.0.0b260730",
+  "fastapi>=0.116,<1",
+  "httpx>=0.28,<1",
+  "uvicorn[standard]>=0.35,<1",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8,<9",
+  "pytest-asyncio>=0.24,<2",
+]
+
+[project.scripts]
+founderos-agents = "founderos_agents.main:run"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["founderos_agents*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
