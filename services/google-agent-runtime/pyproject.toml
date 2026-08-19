@@ -8,7 +8,7 @@ version = "0.1.0"
 description = "Google ADK specialist swarm federated into DAWN/FounderOS"
 requires-python = ">=3.12"
 dependencies = [
-  "google-adk>=2,<3",
+  "google-adk[a2a]>=2,<3",
   "uvicorn[standard]>=0.35,<1",
 ]
 
