@@ -20,7 +20,18 @@ def test_workspace_path_stays_inside_workspace(tmp_path: Path) -> None:
     assert result == (tmp_path / "candidate/tool.py").resolve()
 
 
-def test_command_runner_is_allowlist_only() -> None:
-    assert check_command("python_compile")
+def test_command_runner_is_allowlist_only(tmp_path: Path) -> None:
+    assert check_command("python_compile", tmp_path)
     with pytest.raises(ValueError, match="unsupported"):
-        check_command("rm_everything")
+        check_command("rm_everything", tmp_path)
+
+
+def test_executable_python_check_is_container_sandboxed(tmp_path: Path) -> None:
+    command = check_command("python_unittest_sandbox", tmp_path)
+    joined = " ".join(command)
+    assert command[:2] == ["docker", "run"]
+    assert "--network none" in joined
+    assert "--cap-drop ALL" in joined
+    assert "--read-only" in command
+    assert f"{tmp_path.resolve()}:/workspace:ro" in command
+    assert "python:3.12-slim" in command
