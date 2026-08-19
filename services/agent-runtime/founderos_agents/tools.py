@@ -10,14 +10,15 @@ from agent_framework import tool
 from .brief import MASTER_BUILD_BRIEF
 from .capabilities import capability_catalog, get_capability
 from .config import Settings
+from .portfolio import inspect_repository, portfolio_snapshot
 from .safety import check_command, safe_repo_path, workspace_path
 
 
 IGNORED_DIRS = {".git", ".next", "node_modules", ".agent-workspace", "__pycache__", ".venv"}
 
 
-def _json_text(value: Any) -> str:
-    return json.dumps(value, indent=2, default=str)[:50_000]
+def _json_text(value: Any, max_chars: int = 50_000) -> str:
+    return json.dumps(value, indent=2, default=str)[:max_chars]
 
 
 def _get_json(settings: Settings, path: str) -> dict[str, Any]:
@@ -95,6 +96,23 @@ def build_tools(settings: Settings) -> dict[str, Any]:
             evidence = _probe_url(f"{settings.founder_os_base_url}/api/agents", settings.request_timeout_seconds)
         elif probe == "ollama":
             evidence = _probe_url(f"{settings.ollama_host.rstrip('/')}/api/tags", settings.request_timeout_seconds)
+        elif probe == "github-portfolio":
+            try:
+                snapshot = portfolio_snapshot(
+                    settings.github_owner,
+                    settings.github_token,
+                    settings.request_timeout_seconds,
+                    max_pages=1,
+                )
+                evidence = {
+                    "ok": True,
+                    "owner": snapshot["owner"],
+                    "owned_scope": snapshot["owned_scope"],
+                    "owned_count_first_page": snapshot["owned_count"],
+                    "starred_count_first_page": snapshot["starred_count"],
+                }
+            except Exception as exc:
+                evidence = {"ok": False, "error": str(exc)}
         else:
             return _json_text(
                 {
@@ -112,6 +130,62 @@ def build_tools(settings: Settings) -> dict[str, Any]:
                 "evidence": evidence,
             }
         )
+
+    @tool(approval_mode="never_require")
+    def audit_github_portfolio(relation: str = "all", offset: int = 0, limit: int = 100) -> str:
+        """Read owned repositories and public starred repositories from GitHub in deterministic pages for portfolio architecture analysis."""
+        try:
+            snapshot = portfolio_snapshot(
+                settings.github_owner,
+                settings.github_token,
+                settings.request_timeout_seconds,
+                max_pages=20,
+            )
+            relation_value = relation.strip().lower()
+            if relation_value == "owned":
+                items = snapshot["owned"]
+            elif relation_value == "starred":
+                items = snapshot["starred"]
+            elif relation_value == "all":
+                items = snapshot["owned"] + snapshot["starred"]
+            else:
+                return _json_text({"ok": False, "error": "relation must be all, owned or starred"})
+            safe_offset = max(0, offset)
+            safe_limit = max(1, min(limit, 100))
+            page = items[safe_offset : safe_offset + safe_limit]
+            next_offset = safe_offset + len(page)
+            return _json_text(
+                {
+                    "ok": True,
+                    "owner": snapshot["owner"],
+                    "owned_scope": snapshot["owned_scope"],
+                    "owned_count": snapshot["owned_count"],
+                    "starred_count": snapshot["starred_count"],
+                    "relation": relation_value,
+                    "offset": safe_offset,
+                    "returned": len(page),
+                    "next_offset": next_offset if next_offset < len(items) else None,
+                    "items": page,
+                    "interpretation_rule": snapshot["interpretation_rule"],
+                },
+                max_chars=120_000,
+            )
+        except Exception as exc:
+            return _json_text({"ok": False, "classification": "BLOCKED", "error": str(exc)})
+
+    @tool(approval_mode="never_require")
+    def inspect_github_repository(full_name: str) -> str:
+        """Read one GitHub repository's metadata, licence and README for adoption/integration assessment. No mutation is possible."""
+        try:
+            return _json_text(
+                {
+                    "ok": True,
+                    **inspect_repository(full_name, settings.github_token, settings.request_timeout_seconds),
+                },
+                max_chars=80_000,
+            )
+        except Exception as exc:
+            return _json_text({"ok": False, "classification": "BLOCKED", "repository": full_name, "error": str(exc)})
 
     @tool(approval_mode="never_require")
     def inspect_founderos() -> str:
@@ -208,6 +282,8 @@ def build_tools(settings: Settings) -> dict[str, Any]:
         "discover_capabilities": discover_capabilities,
         "inspect_capability": inspect_capability,
         "probe_capability": probe_capability,
+        "audit_github_portfolio": audit_github_portfolio,
+        "inspect_github_repository": inspect_github_repository,
         "inspect_founderos": inspect_founderos,
         "list_repo_tree": list_repo_tree,
         "read_repo_file": read_repo_file,
