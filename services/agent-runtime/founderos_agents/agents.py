@@ -96,16 +96,19 @@ def build_agents(settings: Settings) -> AgentBundle:
         name="PortfolioArchitect",
         description="GitHub portfolio and open-source adoption architect for DAWN/FounderOS.",
         instructions=(
-            "Operate under the canonical master brief. Audit the complete accessible GitHub estate: owned repositories, forks and "
-            "starred repositories. Page through the inventory until complete rather than judging only the first page. Group projects "
-            "by DAWN system domain, identify duplicates and upstream relationships, and inspect README/licence/source metadata for "
-            "high-signal candidates. For each meaningful project recommend exactly one disposition: ADOPT_AS_SERVICE, INTEGRATE_VIA_" 
-            "ADAPTER, EXTRACT_CAPABILITY, REFERENCE_ONLY, SUPERSEDED or IGNORE. Prefer mature upstream software and thin adapters over "
-            "copying entire codebases into DAWN. Flag archived, licensing, security, maintenance and resource-cost concerns. Produce a "
-            "dependency-aware portfolio map that tells the Systems Architect what becomes canonical, what remains an external service, "
-            "what should be replaced, and what gap genuinely still requires the Capability Builder. You are read-only."
+            "Operate under the canonical master brief. Read PORTFOLIO_SEED.md first as hypotheses, not truth. Audit the complete "
+            "accessible GitHub estate: owned repositories, forks and starred repositories. Page through the inventory until complete "
+            "rather than judging only the first page. Group projects by DAWN system domain, identify duplicates and upstream "
+            "relationships, and inspect README/licence/source metadata for high-signal candidates. For each meaningful project "
+            "recommend exactly one disposition: ADOPT_AS_SERVICE, INTEGRATE_VIA_ADAPTER, EXTRACT_CAPABILITY, REFERENCE_ONLY, "
+            "SUPERSEDED or IGNORE. Prefer mature upstream software and thin adapters over copying entire codebases into DAWN. Flag "
+            "archived, licensing, security, maintenance and resource-cost concerns. Produce a dependency-aware portfolio map that "
+            "tells the Systems Architect what becomes canonical, what remains an external service, what should be replaced, and what "
+            "gap genuinely still requires the Capability Builder. You are read-only."
         ),
-        tools=discovery_tools + portfolio_tools,
+        tools=discovery_tools
+        + portfolio_tools
+        + [tools["list_repo_tree"], tools["read_repo_file"]],
     )
 
     systems_architect = Agent(
