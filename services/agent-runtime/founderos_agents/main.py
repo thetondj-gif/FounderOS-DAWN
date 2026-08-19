@@ -4,15 +4,17 @@ import os
 
 import httpx
 import uvicorn
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Query
 from pydantic import BaseModel, Field
 
 from .agents import role_catalog
+from .brief import MASTER_BUILD_BRIEF, bootstrap_task
+from .capabilities import capability_catalog, get_capability
 from .config import Settings
 from .workflow import run_mission
 
 
-app = FastAPI(title="FounderOS Agent Runtime", version="0.1.0")
+app = FastAPI(title="FounderOS Agent Runtime", version="0.2.0")
 
 
 class MissionRequest(BaseModel):
@@ -38,7 +40,10 @@ def healthz() -> dict[str, object]:
         "ok": True,
         "service": "founderos-agent-runtime",
         "framework": "microsoft-agent-framework",
+        "version": "0.2.0",
         "model": settings.ollama_model,
+        "brief": "DAWN / FounderOS Master Build Brief",
+        "capability_count": len(capability_catalog()),
         "agents": role_catalog(),
     }
 
@@ -56,12 +61,42 @@ def agents() -> dict[str, object]:
     return {"agents": role_catalog()}
 
 
+@app.get("/brief")
+def brief() -> dict[str, object]:
+    return {"name": "DAWN / FounderOS Master Build Brief", "brief": MASTER_BUILD_BRIEF, "bootstrap_task": bootstrap_task()}
+
+
+@app.get("/capabilities")
+def capabilities(
+    q: str = Query(default="", max_length=200),
+    limit: int = Query(default=100, ge=1, le=200),
+) -> dict[str, object]:
+    items = capability_catalog(q or None, max_results=limit)
+    return {"query": q, "count": len(items), "capabilities": items}
+
+
+@app.get("/capabilities/{capability_id}")
+def capability(capability_id: str) -> dict[str, object]:
+    item = get_capability(capability_id)
+    if item is None:
+        raise HTTPException(status_code=404, detail=f"unknown capability: {capability_id}")
+    return {"capability": item}
+
+
 @app.post("/missions/run")
 async def missions_run(request: MissionRequest) -> dict[str, object]:
     try:
         return await run_mission(request.task.strip(), _settings())
     except Exception as exc:
         raise HTTPException(status_code=502, detail=f"mission execution failed: {exc}") from exc
+
+
+@app.post("/missions/bootstrap")
+async def missions_bootstrap() -> dict[str, object]:
+    try:
+        return await run_mission(bootstrap_task(), _settings())
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"bootstrap mission execution failed: {exc}") from exc
 
 
 def run() -> None:
