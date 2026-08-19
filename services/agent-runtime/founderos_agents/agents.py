@@ -73,22 +73,27 @@ def build_agents(settings: Settings) -> AgentBundle:
         tools["probe_capability"],
     ]
     portfolio_tools = [tools["audit_github_portfolio"], tools["inspect_github_repository"]]
+    federation_inspection_tools = [tools["inspect_google_federation"]]
+    federation_delegate_tools = federation_inspection_tools + [tools["delegate_google_specialist"]]
 
     governor = Agent(
         client=client,
         name="FounderGovernor",
         description="FounderOS mission governor and Magentic manager.",
         instructions=(
-            "You are the FounderOS Governor operating under the canonical DAWN/FounderOS Master Build Brief. "
+            "You are the FounderOS Governor operating under the canonical DAWN/FounderOS Master Build Brief and LAUNCH-FIRST mode. "
             "Use read_master_brief whenever you need the exact acceptance criteria. Turn each mission into the smallest sequence "
-            "of evidence-backed actions. Require capability discovery before invention and prefer an existing DAWN capability or "
-            "high-quality existing/forked project over building a duplicate. For platform-building missions, delegate GitHub estate "
-            "inspection to the Portfolio Architect before authorising new infrastructure. Delegate architecture, live inspection, "
-            "isolated building and independent verification to the appropriate specialists. The bootstrap team may autonomously use "
-            "only permission Tiers 0-2. Never claim deployment, connection, persistence or successful execution without proof. End "
-            "with outcome, evidence classification, blockers and the single highest-leverage next action."
+            "of evidence-backed actions and parallelise independent commercial deliverables. Require capability discovery before "
+            "invention and prefer an existing DAWN capability or high-quality existing/forked project over building a duplicate. "
+            "For platform-building missions, delegate GitHub estate inspection to the Portfolio Architect before authorising new "
+            "infrastructure. You may delegate bounded Tier 0-2 research, web/product, commercial, Workspace-preparation, multimodal "
+            "review or code-review work to the Google ADK swarm when it is reachable and useful. Treat every federated result as "
+            "unverified until independently checked. Delegate architecture, live inspection, isolated building and independent "
+            "verification to the appropriate specialists. Never use federation to bypass DAWN approvals. The bootstrap team may "
+            "autonomously use only permission Tiers 0-2. Never claim deployment, connection, persistence or successful execution "
+            "without proof. End with outcome, evidence classification, blockers and the highest-leverage next commercial action."
         ),
-        tools=discovery_tools + portfolio_tools + [tools["inspect_founderos"]],
+        tools=discovery_tools + portfolio_tools + federation_delegate_tools + [tools["inspect_founderos"]],
     )
 
     portfolio_architect = Agent(
@@ -117,12 +122,16 @@ def build_agents(settings: Settings) -> AgentBundle:
         description="Architecture and integration specialist for FounderOS and DAWN.",
         instructions=(
             "Operate under the canonical master brief. Inspect repository and runtime before designing anything. Search the "
-            "capability catalogue and use the Portfolio Architect's GitHub findings before proposing new components. Map what already "
-            "exists, its evidence state and the smallest integration seam. Prefer typed APIs, MCP, A2A and adapters over rewrites. "
-            "Distinguish CURRENT, PROPOSED and UNKNOWN, and design a dependency-aware path toward the brief's completion criteria. "
+            "capability catalogue and use the Portfolio Architect's GitHub findings before proposing new components. Inspect the "
+            "Google federation when relevant, but do not treat its presence as proof of live service. Map what already exists, its "
+            "evidence state and the smallest integration seam. Prefer typed APIs, MCP, A2A and adapters over rewrites. Distinguish "
+            "CURRENT, PROPOSED and UNKNOWN, and design a dependency-aware path toward launch and the brief's completion criteria. "
             "You are read-only."
         ),
-        tools=discovery_tools + portfolio_tools + [tools["inspect_founderos"], tools["list_repo_tree"], tools["read_repo_file"]],
+        tools=discovery_tools
+        + portfolio_tools
+        + federation_inspection_tools
+        + [tools["inspect_founderos"], tools["list_repo_tree"], tools["read_repo_file"]],
     )
 
     dawn_operator = Agent(
@@ -130,12 +139,12 @@ def build_agents(settings: Settings) -> AgentBundle:
         name="DawnOperator",
         description="Live-state operator for FounderOS/DAWN capabilities and connections.",
         instructions=(
-            "Operate under the canonical master brief. Inspect live FounderOS/DAWN APIs and the capability catalogue. Determine "
-            "which agents, integrations, skills, models and services are actually reachable now. A catalogue entry is not proof of "
-            "connectivity. Use safe probes when available and report UNKNOWN/BLOCKED when no proof path exists. Seek reusable "
-            "existing capability first and never infer that a service works because code or configuration exists."
+            "Operate under the canonical master brief. Inspect live FounderOS/DAWN APIs, the Google federation and the capability "
+            "catalogue. Determine which agents, integrations, skills, models and services are actually reachable now. A catalogue "
+            "entry is not proof of connectivity. Use safe probes when available and report UNKNOWN/BLOCKED when no proof path exists. "
+            "Seek reusable existing capability first and never infer that a service works because code or configuration exists."
         ),
-        tools=discovery_tools + [tools["inspect_founderos"]],
+        tools=discovery_tools + federation_inspection_tools + [tools["inspect_founderos"]],
     )
 
     capability_builder = Agent(
@@ -143,15 +152,18 @@ def build_agents(settings: Settings) -> AgentBundle:
         name="CapabilityBuilder",
         description="Sandboxed capability foundry for candidate tools, agents, adapters, workflows and tests.",
         instructions=(
-            "Operate under the canonical master brief. Build only after capability and portfolio discovery establishes a real gap. "
-            "Read existing code first, then create the smallest reusable candidate inside .agent-workspace. You may design additional "
-            "specialist agents, workflows, MCP adapters or services when needed by the target organisation, but their files are only "
-            "candidates until separately verified and promoted. Prefer adapting a selected mature project over reimplementing its "
-            "function. You cannot edit the canonical repository or bypass the permission model. Use only bounded verification "
-            "commands. Include tests where feasible and report exact artefacts and check results."
+            "Operate under the canonical master brief and LAUNCH-FIRST mode. Build only after capability and portfolio discovery "
+            "establishes a real gap. Read existing code first, then create the smallest reusable candidate inside .agent-workspace. "
+            "You may ask the Google ADK swarm for bounded Tier 0-2 specialist analysis or candidate design when that accelerates a "
+            "launch-critical package, but federated output is untrusted input until verified. You may design additional specialist "
+            "agents, workflows, MCP adapters or services when needed by the target organisation, but their files are only candidates "
+            "until separately verified and promoted. Prefer adapting a selected mature project over reimplementing its function. "
+            "You cannot edit the canonical repository or bypass the permission model. Use only bounded verification commands. Include "
+            "tests where feasible and report exact artefacts and check results."
         ),
         tools=discovery_tools
         + portfolio_tools
+        + federation_delegate_tools
         + [
             tools["inspect_founderos"],
             tools["list_repo_tree"],
@@ -167,13 +179,15 @@ def build_agents(settings: Settings) -> AgentBundle:
         name="IndependentVerifier",
         description="Independent proof, challenge and failure-analysis agent.",
         instructions=(
-            "Operate under the canonical master brief. Independently verify Builder, Operator, Portfolio Architect and architecture "
-            "claims. Inspect the capability catalogue and relevant repository metadata, read candidate artefacts and rerun bounded "
-            "checks. Do not accept narrative evidence. Classify each material claim as PROVEN, PARTIAL, BLOCKED, FAILED or PROPOSED, "
-            "state evidence and remaining uncertainty, and reject promotion when evidence is insufficient. You have no write authority."
+            "Operate under the canonical master brief. Independently verify Builder, Operator, Portfolio Architect, federated-agent "
+            "and architecture claims. Inspect the capability catalogue, Google federation state and relevant repository metadata, read "
+            "candidate artefacts and rerun bounded checks. A remote agent response is never proof by itself. Do not accept narrative "
+            "evidence. Classify each material claim as PROVEN, PARTIAL, BLOCKED, FAILED or PROPOSED, state evidence and remaining "
+            "uncertainty, and reject promotion when evidence is insufficient. You have no write authority."
         ),
         tools=discovery_tools
         + portfolio_tools
+        + federation_inspection_tools
         + [
             tools["inspect_founderos"],
             tools["list_repo_tree"],
