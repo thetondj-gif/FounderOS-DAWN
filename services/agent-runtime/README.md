@@ -3,12 +3,13 @@
 This service is the first Microsoft Agent Framework orchestration nucleus for FounderOS/DAWN.
 It is intentionally a sidecar: the existing Next.js runtime, database, connectors and agents remain intact while this service coordinates higher-order missions above them.
 
-## Initial agent nucleus
+## Bootstrap organisation
 
 | Agent | Responsibility | Mutation authority |
 | --- | --- | --- |
 | Founder Governor | Owns the mission, delegates and demands proof | None |
-| Systems Architect | Inspects architecture and chooses the smallest integration seam | Read-only |
+| Portfolio Architect | Audits owned/forked/starred GitHub projects and produces the adoption/integration map | Read-only |
+| Systems Architect | Converts capability + portfolio evidence into the target architecture | Read-only |
 | DAWN Operator | Inspects live FounderOS/DAWN APIs and existing capabilities | Read-only |
 | Capability Builder | Builds candidate agents/adapters/tools/workflows and tests them | `.agent-workspace/` only |
 | Independent Verifier | Re-runs checks and challenges claims | Checks only |
@@ -21,33 +22,54 @@ Every mission is automatically wrapped with the canonical DAWN/FounderOS master 
 
 - FounderOS / Microsoft Agent Framework / DAWN separation of responsibilities
 - inspect-before-inventing and reuse-first rules
-- the required operating domains for the completed organisation
+- GitHub estate assimilation before substantial new platform builds
+- required operating domains for the completed organisation
 - permission Tiers 0-5
 - PROVEN / PARTIAL / BLOCKED / FAILED / PROPOSED evidence semantics
 - self-expansion rules for additional specialist agents, workflows and adapters
 - system-level completion criteria
-- the first bootstrap mission
+- bootstrap and portfolio-audit missions
 
-The brief is available through `GET /brief` and to every bootstrap agent through the `read_master_brief` tool.
+The brief is available through `GET /brief` and to every bootstrap agent through `read_master_brief`.
 
-## Capability discovery gateway
+## Capability discovery and GitHub portfolio audit
 
-The runtime includes a canonical capability catalogue covering the current/target stack: FounderOS, Microsoft Agent Framework, GitHub, Ollama, MLX, OpenAI, Hermes, n8n, Composio, Gmail, Google Calendar/Drive, Postiz, Firecrawl, Playwright, Qdrant, Graphiti, Obsidian, Langfuse, ComfyUI, Voicebox, MCP, skills, scripts, datasets, PostgreSQL, DAWN research intelligence, the Capability Foundry and proof ledger.
+The runtime includes the DAWN capability catalogue plus a read-only GitHub Portfolio Reader. The Portfolio Architect can page through owned repositories and public stars, then inspect high-signal repository metadata, licence and README content.
 
-Catalogue metadata deliberately distinguishes `available`, `known` and `requires-adapter`. A catalogue record is not proof that a service is connected. Agents have `discover_capabilities`, `inspect_capability` and safe `probe_capability` tools; runtime connection/skill snapshots are also included when discovery runs.
+Material projects receive one disposition:
+
+- `ADOPT_AS_SERVICE`
+- `INTEGRATE_VIA_ADAPTER`
+- `EXTRACT_CAPABILITY`
+- `REFERENCE_ONLY`
+- `SUPERSEDED`
+- `IGNORE`
+
+This is intentionally not a "merge every fork" mechanism. Mature systems should normally stay intact behind a narrow DAWN adapter.
+
+Without a token, the portfolio reader sees public owned repositories plus public stars. A read-scoped GitHub token enables the private owned estate; the adapter has no GitHub mutation functions.
+
+```bash
+export FOUNDER_AGENT_GITHUB_OWNER=thetondj-gif
+export FOUNDER_AGENT_GITHUB_TOKEN='<read-scoped token>'  # optional for private owned repos
+```
 
 API surfaces:
 
 ```bash
 curl http://127.0.0.1:4200/brief
 curl 'http://127.0.0.1:4200/capabilities?q=memory'
-curl http://127.0.0.1:4200/capabilities/qdrant
+curl http://127.0.0.1:4200/capabilities/github-portfolio
+curl http://127.0.0.1:4200/portfolio
 ```
+
+Agent tools include `audit_github_portfolio` and `inspect_github_repository`. Inventory pages expose continuation offsets so the Portfolio Architect is instructed to scan the whole estate rather than only the first page.
 
 ## Safety boundary
 
-The initial nucleus is deliberately not allowed to edit the canonical repository or run unrestricted host commands.
+The bootstrap organisation is deliberately not allowed to edit the canonical repository or run unrestricted host commands.
 
+- GitHub portfolio operations are read-only.
 - Repository tools are read-only and reject secret-like paths.
 - Candidate code is written only below `.agent-workspace/`.
 - `python_compile` may run on the host because it parses/compiles without importing candidate modules.
@@ -68,7 +90,7 @@ python -m pip install -U pip
 python -m pip install -e '.[dev]'
 ```
 
-The runtime uses local Ollama by default. Override any setting as needed:
+The runtime uses local Ollama by default:
 
 ```bash
 export FOUNDER_AGENT_OLLAMA_HOST=http://127.0.0.1:11434
@@ -91,29 +113,20 @@ curl http://127.0.0.1:4200/readyz
 curl http://127.0.0.1:4200/agents
 ```
 
-Run an arbitrary mission under the master brief:
+Run the complete GitHub estate analysis:
 
 ```bash
-curl -sS -X POST http://127.0.0.1:4200/missions/run \
-  -H 'content-type: application/json' \
-  -d '{"task":"Inspect FounderOS and DAWN, identify one missing capability needed for reliable orchestration, build a sandboxed candidate, test it, then independently verify the result."}'
+curl -sS -X POST http://127.0.0.1:4200/missions/portfolio-audit
 ```
 
-Run the canonical bootstrap mission:
+Run the canonical bootstrap mission, which now consumes capability and GitHub-estate evidence:
 
 ```bash
 curl -sS -X POST http://127.0.0.1:4200/missions/bootstrap
 ```
 
-## What this proves
+## Proof boundary
 
-Stage 1 is complete when:
+CI proves construction, safety rules, portfolio classification primitives and framework compatibility. Live host proof still requires `/readyz` plus an actual portfolio/bootstrap mission against the Mac-hosted Ollama and FounderOS runtime.
 
-1. `/readyz` proves both Ollama and the FounderOS agent API are reachable.
-2. A mission causes the Governor to delegate real inspection work.
-3. The team consults the capability catalogue before inventing a new component.
-4. The Builder creates a candidate only inside `.agent-workspace/`.
-5. A bounded automated check actually executes, with executable candidate code confined to Docker.
-6. The Verifier independently classifies the outcome from evidence.
-
-It does **not** yet prove production deployment, autonomous PR promotion, MCP publication, persistent workflow checkpoints or human approval. Those belong to the next gates after this nucleus is proven on the live DAWN host.
+It does **not** yet prove production deployment, autonomous PR promotion, MCP publication, persistent workflow checkpoints or human approval. Those remain subsequent evidence gates.
