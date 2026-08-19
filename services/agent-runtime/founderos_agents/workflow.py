@@ -5,6 +5,7 @@ from typing import Any
 from agent_framework.orchestrations import MagenticBuilder
 
 from .agents import build_agents
+from .brief import mission_prompt
 from .config import Settings
 
 
@@ -31,11 +32,14 @@ def _event_record(event: Any) -> dict[str, Any]:
 
 async def run_mission(task: str, settings: Settings) -> dict[str, Any]:
     # Workflows preserve state across calls, so every mission receives a fresh workflow.
+    # The canonical build brief is injected into every mission so a short user request
+    # cannot accidentally strip the organisation of its target architecture or gates.
     workflow = build_founder_workflow(settings)
+    effective_task = mission_prompt(task)
     trace: list[dict[str, Any]] = []
     final_output: str | None = None
 
-    async for event in workflow.run(task, stream=True):
+    async for event in workflow.run(effective_task, stream=True):
         record = _event_record(event)
         if record["type"] in {"output", "magentic_orchestrator", "status", "error"}:
             trace.append(record)
@@ -47,6 +51,7 @@ async def run_mission(task: str, settings: Settings) -> dict[str, Any]:
     return {
         "ok": final_output is not None,
         "task": task,
+        "brief_injected": True,
         "final": final_output,
         "trace": trace[-100:],
     }
