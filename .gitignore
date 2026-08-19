@@ -14,6 +14,13 @@ dir-sidebar.jpeg
 # Firecrawl scratch (scraped API docs, tokens) — never commit.
 .firecrawl/
 
+# FounderOS Microsoft Agent Framework sidecar.
+.agent-workspace/
+.venv/
+**/__pycache__/
+*.py[cod]
+services/agent-runtime/.pytest_cache/
+
 # Secrets — never commit real credentials. Only .env.example is tracked.
 .env
 .env.local
