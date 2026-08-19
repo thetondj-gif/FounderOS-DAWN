@@ -8,9 +8,10 @@ from fastapi import FastAPI, HTTPException, Query
 from pydantic import BaseModel, Field
 
 from .agents import role_catalog
-from .brief import MASTER_BUILD_BRIEF, bootstrap_task
+from .brief import MASTER_BUILD_BRIEF, bootstrap_task, portfolio_audit_task
 from .capabilities import capability_catalog, get_capability
 from .config import Settings
+from .portfolio import portfolio_snapshot
 from .workflow import run_mission
 
 
@@ -63,7 +64,12 @@ def agents() -> dict[str, object]:
 
 @app.get("/brief")
 def brief() -> dict[str, object]:
-    return {"name": "DAWN / FounderOS Master Build Brief", "brief": MASTER_BUILD_BRIEF, "bootstrap_task": bootstrap_task()}
+    return {
+        "name": "DAWN / FounderOS Master Build Brief",
+        "brief": MASTER_BUILD_BRIEF,
+        "bootstrap_task": bootstrap_task(),
+        "portfolio_audit_task": portfolio_audit_task(),
+    }
 
 
 @app.get("/capabilities")
@@ -83,6 +89,20 @@ def capability(capability_id: str) -> dict[str, object]:
     return {"capability": item}
 
 
+@app.get("/portfolio")
+def portfolio(max_pages: int = Query(default=10, ge=1, le=20)) -> dict[str, object]:
+    settings = _settings()
+    try:
+        return portfolio_snapshot(
+            settings.github_owner,
+            settings.github_token,
+            settings.request_timeout_seconds,
+            max_pages=max_pages,
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"portfolio read failed: {exc}") from exc
+
+
 @app.post("/missions/run")
 async def missions_run(request: MissionRequest) -> dict[str, object]:
     try:
@@ -97,6 +117,14 @@ async def missions_bootstrap() -> dict[str, object]:
         return await run_mission(bootstrap_task(), _settings())
     except Exception as exc:
         raise HTTPException(status_code=502, detail=f"bootstrap mission execution failed: {exc}") from exc
+
+
+@app.post("/missions/portfolio-audit")
+async def missions_portfolio_audit() -> dict[str, object]:
+    try:
+        return await run_mission(portfolio_audit_task(), _settings())
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"portfolio audit mission execution failed: {exc}") from exc
 
 
 def run() -> None:
