@@ -10,6 +10,7 @@ from agent_framework import tool
 from .brief import MASTER_BUILD_BRIEF
 from .capabilities import capability_catalog, get_capability
 from .config import Settings
+from .federation import delegate_google_task, inspect_google_federation as inspect_google_federation_state
 from .portfolio import inspect_repository, portfolio_snapshot
 from .safety import check_command, safe_repo_path, workspace_path
 
@@ -53,7 +54,7 @@ def _probe_url(url: str, timeout: float) -> dict[str, Any]:
 def build_tools(settings: Settings) -> dict[str, Any]:
     @tool(approval_mode="never_require")
     def read_master_brief() -> str:
-        """Return the canonical DAWN/FounderOS target architecture, build rules, permission model and acceptance criteria."""
+        """Return the canonical DAWN/FounderOS target architecture, launch priority, permission model and acceptance criteria."""
         return MASTER_BUILD_BRIEF
 
     @tool(approval_mode="never_require")
@@ -113,6 +114,9 @@ def build_tools(settings: Settings) -> dict[str, Any]:
                 }
             except Exception as exc:
                 evidence = {"ok": False, "error": str(exc)}
+        elif probe == "google-a2a":
+            federation = inspect_google_federation_state(settings.request_timeout_seconds)
+            evidence = {"ok": bool(federation.get("reachable")), **federation}
         else:
             return _json_text(
                 {
@@ -186,6 +190,26 @@ def build_tools(settings: Settings) -> dict[str, Any]:
             )
         except Exception as exc:
             return _json_text({"ok": False, "classification": "BLOCKED", "repository": full_name, "error": str(exc)})
+
+    @tool(approval_mode="never_require")
+    def inspect_google_federation() -> str:
+        """Inspect the configured Google ADK A2A agent card without delegating work or granting additional authority."""
+        return _json_text(inspect_google_federation_state(settings.request_timeout_seconds), max_chars=30_000)
+
+    @tool(approval_mode="never_require")
+    async def delegate_google_specialist(task: str) -> str:
+        """Delegate one bounded Tier 0-2 work package to the configured Google ADK swarm over A2A. Remote output remains unverified."""
+        try:
+            return _json_text(await delegate_google_task(task), max_chars=120_000)
+        except Exception as exc:
+            return _json_text(
+                {
+                    "provider": "google-adk",
+                    "transport": "A2A",
+                    "classification": "BLOCKED",
+                    "error": str(exc),
+                }
+            )
 
     @tool(approval_mode="never_require")
     def inspect_founderos() -> str:
@@ -284,6 +308,8 @@ def build_tools(settings: Settings) -> dict[str, Any]:
         "probe_capability": probe_capability,
         "audit_github_portfolio": audit_github_portfolio,
         "inspect_github_repository": inspect_github_repository,
+        "inspect_google_federation": inspect_google_federation,
+        "delegate_google_specialist": delegate_google_specialist,
         "inspect_founderos": inspect_founderos,
         "list_repo_tree": list_repo_tree,
         "read_repo_file": read_repo_file,
