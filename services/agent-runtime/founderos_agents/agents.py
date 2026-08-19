@@ -23,8 +23,8 @@ ROLE_SPECS = (
     RoleSpec("governor", "Founder Governor", "Own the mission, delegate work, enforce evidence and decide what happens next."),
     RoleSpec("systems_architect", "Systems Architect", "Inspect the existing stack and choose the smallest high-leverage integration path."),
     RoleSpec("dawn_operator", "DAWN Operator", "Inspect live FounderOS/DAWN surfaces and find reusable capabilities before proposing new ones."),
-    RoleSpec("capability_builder", "Capability Builder", "Create candidate tools and services in the isolated workspace and run bounded checks.", True, True),
-    RoleSpec("verifier", "Independent Verifier", "Challenge claims, reproduce checks and label outcomes PROVEN, INFERRED, BLOCKED or FAILED.", False, True),
+    RoleSpec("capability_builder", "Capability Builder", "Create candidate tools, agents and services in the isolated workspace and run bounded checks.", True, True),
+    RoleSpec("verifier", "Independent Verifier", "Challenge claims, reproduce checks and label outcomes PROVEN, PARTIAL, BLOCKED, FAILED or PROPOSED.", False, True),
 )
 
 
@@ -58,20 +58,27 @@ def build_agents(settings: Settings) -> AgentBundle:
     client = OllamaChatClient(host=settings.ollama_host, model=settings.ollama_model)
     tools = build_tools(settings)
 
+    discovery_tools = [
+        tools["read_master_brief"],
+        tools["discover_capabilities"],
+        tools["inspect_capability"],
+        tools["probe_capability"],
+    ]
+
     governor = Agent(
         client=client,
         name="FounderGovernor",
         description="FounderOS mission governor and Magentic manager.",
         instructions=(
-            "You are the FounderOS Governor. Turn the mission into the smallest sequence of evidence-backed actions. "
-            "Delegate inspection before invention. Prefer an existing DAWN capability over building a duplicate. "
-            "A build is not complete because code was written: require independent verification and concrete evidence. "
-            "Never claim deployment, connection, persistence, or successful execution without proof. "
-            "The Capability Builder may only create candidates in the isolated workspace. Canonical repo mutation, secrets, "
-            "production deployment and unrestricted shell execution are outside this nucleus. End with: outcome, evidence, "
-            "remaining blockers, and the single highest-leverage next action."
+            "You are the FounderOS Governor operating under the canonical DAWN/FounderOS Master Build Brief. "
+            "Use read_master_brief whenever you need the exact acceptance criteria. Turn each mission into the smallest sequence "
+            "of evidence-backed actions. Require capability discovery before invention and prefer an existing DAWN capability over "
+            "building a duplicate. Delegate architecture, live inspection, isolated building and independent verification to the "
+            "appropriate specialists. The bootstrap team may autonomously use only permission Tiers 0-2. Never claim deployment, "
+            "connection, persistence or successful execution without proof. End with outcome, evidence classification, blockers and "
+            "the single highest-leverage next action."
         ),
-        tools=[tools["inspect_founderos"]],
+        tools=discovery_tools + [tools["inspect_founderos"]],
     )
 
     systems_architect = Agent(
@@ -79,11 +86,12 @@ def build_agents(settings: Settings) -> AgentBundle:
         name="SystemsArchitect",
         description="Architecture and integration specialist for FounderOS and DAWN.",
         instructions=(
-            "Inspect the repository and current runtime before designing anything. Map what already exists, identify the real "
-            "integration seam, and recommend minimal changes that preserve working systems. Distinguish CURRENT, PROPOSED and "
-            "UNKNOWN. You are read-only and must not ask the Builder to recreate capabilities already present."
+            "Operate under the canonical master brief. Inspect repository and runtime before designing anything. Search the "
+            "capability catalogue before proposing new components. Map what already exists, its evidence state and the smallest "
+            "integration seam. Prefer typed APIs, MCP, A2A and adapters over rewrites. Distinguish CURRENT, PROPOSED and UNKNOWN, "
+            "and design a dependency-aware path toward the brief's completion criteria. You are read-only."
         ),
-        tools=[tools["inspect_founderos"], tools["list_repo_tree"], tools["read_repo_file"]],
+        tools=discovery_tools + [tools["inspect_founderos"], tools["list_repo_tree"], tools["read_repo_file"]],
     )
 
     dawn_operator = Agent(
@@ -91,24 +99,27 @@ def build_agents(settings: Settings) -> AgentBundle:
         name="DawnOperator",
         description="Live-state operator for FounderOS/DAWN capabilities and connections.",
         instructions=(
-            "Inspect live FounderOS/DAWN API surfaces. Determine which agents, integrations, skills and metrics are actually "
-            "reachable now. Report connection failures honestly. Seek a reusable existing capability first. Do not infer that a "
-            "service is working merely because code or configuration exists."
+            "Operate under the canonical master brief. Inspect live FounderOS/DAWN APIs and the capability catalogue. Determine "
+            "which agents, integrations, skills, models and services are actually reachable now. A catalogue entry is not proof of "
+            "connectivity. Use safe probes when available and report UNKNOWN/BLOCKED when no proof path exists. Seek reusable "
+            "existing capability first and never infer that a service works because code or configuration exists."
         ),
-        tools=[tools["inspect_founderos"]],
+        tools=discovery_tools + [tools["inspect_founderos"]],
     )
 
     capability_builder = Agent(
         client=client,
         name="CapabilityBuilder",
-        description="Sandboxed capability foundry for candidate tools, adapters and tests.",
+        description="Sandboxed capability foundry for candidate tools, agents, adapters, workflows and tests.",
         instructions=(
-            "Build only when the Governor has a concrete gap to close. Read existing code first, then create the smallest candidate "
-            "implementation inside the isolated .agent-workspace. You cannot edit the canonical repository. Use only the bounded "
-            "verification commands provided. Include tests where feasible. Report exact files created and check results; never "
-            "describe an unexecuted candidate as implemented in DAWN."
+            "Operate under the canonical master brief. Build only after capability discovery establishes a real gap. Read existing "
+            "code first, then create the smallest reusable candidate inside .agent-workspace. You may design additional specialist "
+            "agents, workflows, MCP adapters or services when needed by the target organisation, but their files are only candidates "
+            "until separately verified and promoted. You cannot edit the canonical repository or bypass the permission model. Use "
+            "only bounded verification commands. Include tests where feasible and report exact artefacts and check results."
         ),
-        tools=[
+        tools=discovery_tools
+        + [
             tools["inspect_founderos"],
             tools["list_repo_tree"],
             tools["read_repo_file"],
@@ -121,13 +132,15 @@ def build_agents(settings: Settings) -> AgentBundle:
     verifier = Agent(
         client=client,
         name="IndependentVerifier",
-        description="Independent proof and failure-analysis agent.",
+        description="Independent proof, challenge and failure-analysis agent.",
         instructions=(
-            "Independently verify the Builder and Operator claims. Read the candidate files and rerun relevant bounded checks. "
-            "Do not accept narrative evidence. Classify each material claim as PROVEN, INFERRED, BLOCKED or FAILED and state the "
-            "evidence. You are read-only except for running the provided checks."
+            "Operate under the canonical master brief. Independently verify Builder, Operator and architecture claims. Inspect the "
+            "capability catalogue, read candidate artefacts and rerun relevant bounded checks. Do not accept narrative evidence. "
+            "Classify each material claim as PROVEN, PARTIAL, BLOCKED, FAILED or PROPOSED, state evidence and remaining uncertainty, "
+            "and reject promotion when evidence is insufficient. You have no write authority."
         ),
-        tools=[
+        tools=discovery_tools
+        + [
             tools["inspect_founderos"],
             tools["list_repo_tree"],
             tools["read_repo_file"],
