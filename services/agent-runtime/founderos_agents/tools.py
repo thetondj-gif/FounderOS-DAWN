@@ -7,6 +7,8 @@ from typing import Any
 import httpx
 from agent_framework import tool
 
+from .brief import MASTER_BUILD_BRIEF
+from .capabilities import capability_catalog, get_capability
 from .config import Settings
 from .safety import check_command, safe_repo_path, workspace_path
 
@@ -33,7 +35,84 @@ def _get_json(settings: Settings, path: str) -> dict[str, Any]:
         return {"url": url, "status_code": None, "ok": False, "error": str(exc)}
 
 
+def _probe_url(url: str, timeout: float) -> dict[str, Any]:
+    try:
+        with httpx.Client(timeout=timeout) as client:
+            response = client.get(url)
+        return {
+            "url": url,
+            "ok": response.is_success,
+            "status_code": response.status_code,
+            "evidence": response.text[:1000],
+        }
+    except Exception as exc:
+        return {"url": url, "ok": False, "status_code": None, "error": str(exc)}
+
+
 def build_tools(settings: Settings) -> dict[str, Any]:
+    @tool(approval_mode="never_require")
+    def read_master_brief() -> str:
+        """Return the canonical DAWN/FounderOS target architecture, build rules, permission model and acceptance criteria."""
+        return MASTER_BUILD_BRIEF
+
+    @tool(approval_mode="never_require")
+    def discover_capabilities(query: str = "", max_results: int = 100) -> str:
+        """Search the known DAWN/FounderOS capability catalogue before proposing or building a duplicate capability."""
+        catalogue = capability_catalog(query or None, max_results=max_results)
+        live_connections = _get_json(settings, "/api/connections")
+        live_skills = _get_json(settings, "/api/skills")
+        return _json_text(
+            {
+                "catalogue": catalogue,
+                "catalogue_count": len(catalogue),
+                "runtime_snapshots": {
+                    "founderos_connections": live_connections,
+                    "founderos_skills": live_skills,
+                },
+                "interpretation_rule": (
+                    "Catalogue availability is metadata, not proof of live connectivity. "
+                    "Use inspect_capability/probe_capability and existing runtime APIs before claiming a tool is connected."
+                ),
+            }
+        )
+
+    @tool(approval_mode="never_require")
+    def inspect_capability(capability_id: str) -> str:
+        """Read metadata, permission tier and integration status for one named registered capability."""
+        item = get_capability(capability_id)
+        if item is None:
+            return _json_text({"found": False, "capability_id": capability_id})
+        return _json_text({"found": True, "capability": item})
+
+    @tool(approval_mode="never_require")
+    def probe_capability(capability_id: str) -> str:
+        """Probe only pre-registered safe health surfaces. Capabilities without a health adapter return UNKNOWN rather than guessed success."""
+        item = get_capability(capability_id)
+        if item is None:
+            return _json_text({"found": False, "capability_id": capability_id})
+        probe = item.get("health_probe")
+        if probe == "founderos":
+            evidence = _probe_url(f"{settings.founder_os_base_url}/api/agents", settings.request_timeout_seconds)
+        elif probe == "ollama":
+            evidence = _probe_url(f"{settings.ollama_host.rstrip('/')}/api/tags", settings.request_timeout_seconds)
+        else:
+            return _json_text(
+                {
+                    "found": True,
+                    "capability": item,
+                    "classification": "UNKNOWN",
+                    "reason": "No safe live health adapter is registered for this capability yet.",
+                }
+            )
+        return _json_text(
+            {
+                "found": True,
+                "capability": item,
+                "classification": "PROVEN" if evidence.get("ok") else "BLOCKED",
+                "evidence": evidence,
+            }
+        )
+
     @tool(approval_mode="never_require")
     def inspect_founderos() -> str:
         """Read current FounderOS/DAWN runtime surfaces without changing anything."""
@@ -125,6 +204,10 @@ def build_tools(settings: Settings) -> dict[str, Any]:
             return _json_text({"check": check, "ok": False, "error": str(exc)})
 
     return {
+        "read_master_brief": read_master_brief,
+        "discover_capabilities": discover_capabilities,
+        "inspect_capability": inspect_capability,
+        "probe_capability": probe_capability,
         "inspect_founderos": inspect_founderos,
         "list_repo_tree": list_repo_tree,
         "read_repo_file": read_repo_file,
