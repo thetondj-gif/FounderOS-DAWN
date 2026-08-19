@@ -21,6 +21,7 @@ class RoleSpec:
 
 ROLE_SPECS = (
     RoleSpec("governor", "Founder Governor", "Own the mission, delegate work, enforce evidence and decide what happens next."),
+    RoleSpec("portfolio_architect", "Portfolio Architect", "Audit owned, forked and starred GitHub projects and turn them into an adoption/integration map for DAWN."),
     RoleSpec("systems_architect", "Systems Architect", "Inspect the existing stack and choose the smallest high-leverage integration path."),
     RoleSpec("dawn_operator", "DAWN Operator", "Inspect live FounderOS/DAWN surfaces and find reusable capabilities before proposing new ones."),
     RoleSpec("capability_builder", "Capability Builder", "Create candidate tools, agents and services in the isolated workspace and run bounded checks.", True, True),
@@ -31,6 +32,7 @@ ROLE_SPECS = (
 @dataclass
 class AgentBundle:
     governor: Agent
+    portfolio_architect: Agent
     systems_architect: Agent
     dawn_operator: Agent
     capability_builder: Agent
@@ -38,7 +40,13 @@ class AgentBundle:
 
     @property
     def participants(self) -> list[Agent]:
-        return [self.systems_architect, self.dawn_operator, self.capability_builder, self.verifier]
+        return [
+            self.portfolio_architect,
+            self.systems_architect,
+            self.dawn_operator,
+            self.capability_builder,
+            self.verifier,
+        ]
 
 
 def role_catalog() -> list[dict[str, Any]]:
@@ -64,6 +72,7 @@ def build_agents(settings: Settings) -> AgentBundle:
         tools["inspect_capability"],
         tools["probe_capability"],
     ]
+    portfolio_tools = [tools["audit_github_portfolio"], tools["inspect_github_repository"]]
 
     governor = Agent(
         client=client,
@@ -72,13 +81,31 @@ def build_agents(settings: Settings) -> AgentBundle:
         instructions=(
             "You are the FounderOS Governor operating under the canonical DAWN/FounderOS Master Build Brief. "
             "Use read_master_brief whenever you need the exact acceptance criteria. Turn each mission into the smallest sequence "
-            "of evidence-backed actions. Require capability discovery before invention and prefer an existing DAWN capability over "
-            "building a duplicate. Delegate architecture, live inspection, isolated building and independent verification to the "
-            "appropriate specialists. The bootstrap team may autonomously use only permission Tiers 0-2. Never claim deployment, "
-            "connection, persistence or successful execution without proof. End with outcome, evidence classification, blockers and "
-            "the single highest-leverage next action."
+            "of evidence-backed actions. Require capability discovery before invention and prefer an existing DAWN capability or "
+            "high-quality existing/forked project over building a duplicate. For platform-building missions, delegate GitHub estate "
+            "inspection to the Portfolio Architect before authorising new infrastructure. Delegate architecture, live inspection, "
+            "isolated building and independent verification to the appropriate specialists. The bootstrap team may autonomously use "
+            "only permission Tiers 0-2. Never claim deployment, connection, persistence or successful execution without proof. End "
+            "with outcome, evidence classification, blockers and the single highest-leverage next action."
         ),
-        tools=discovery_tools + [tools["inspect_founderos"]],
+        tools=discovery_tools + portfolio_tools + [tools["inspect_founderos"]],
+    )
+
+    portfolio_architect = Agent(
+        client=client,
+        name="PortfolioArchitect",
+        description="GitHub portfolio and open-source adoption architect for DAWN/FounderOS.",
+        instructions=(
+            "Operate under the canonical master brief. Audit the complete accessible GitHub estate: owned repositories, forks and "
+            "starred repositories. Page through the inventory until complete rather than judging only the first page. Group projects "
+            "by DAWN system domain, identify duplicates and upstream relationships, and inspect README/licence/source metadata for "
+            "high-signal candidates. For each meaningful project recommend exactly one disposition: ADOPT_AS_SERVICE, INTEGRATE_VIA_" 
+            "ADAPTER, EXTRACT_CAPABILITY, REFERENCE_ONLY, SUPERSEDED or IGNORE. Prefer mature upstream software and thin adapters over "
+            "copying entire codebases into DAWN. Flag archived, licensing, security, maintenance and resource-cost concerns. Produce a "
+            "dependency-aware portfolio map that tells the Systems Architect what becomes canonical, what remains an external service, "
+            "what should be replaced, and what gap genuinely still requires the Capability Builder. You are read-only."
+        ),
+        tools=discovery_tools + portfolio_tools,
     )
 
     systems_architect = Agent(
@@ -87,11 +114,12 @@ def build_agents(settings: Settings) -> AgentBundle:
         description="Architecture and integration specialist for FounderOS and DAWN.",
         instructions=(
             "Operate under the canonical master brief. Inspect repository and runtime before designing anything. Search the "
-            "capability catalogue before proposing new components. Map what already exists, its evidence state and the smallest "
-            "integration seam. Prefer typed APIs, MCP, A2A and adapters over rewrites. Distinguish CURRENT, PROPOSED and UNKNOWN, "
-            "and design a dependency-aware path toward the brief's completion criteria. You are read-only."
+            "capability catalogue and use the Portfolio Architect's GitHub findings before proposing new components. Map what already "
+            "exists, its evidence state and the smallest integration seam. Prefer typed APIs, MCP, A2A and adapters over rewrites. "
+            "Distinguish CURRENT, PROPOSED and UNKNOWN, and design a dependency-aware path toward the brief's completion criteria. "
+            "You are read-only."
         ),
-        tools=discovery_tools + [tools["inspect_founderos"], tools["list_repo_tree"], tools["read_repo_file"]],
+        tools=discovery_tools + portfolio_tools + [tools["inspect_founderos"], tools["list_repo_tree"], tools["read_repo_file"]],
     )
 
     dawn_operator = Agent(
@@ -112,13 +140,15 @@ def build_agents(settings: Settings) -> AgentBundle:
         name="CapabilityBuilder",
         description="Sandboxed capability foundry for candidate tools, agents, adapters, workflows and tests.",
         instructions=(
-            "Operate under the canonical master brief. Build only after capability discovery establishes a real gap. Read existing "
-            "code first, then create the smallest reusable candidate inside .agent-workspace. You may design additional specialist "
-            "agents, workflows, MCP adapters or services when needed by the target organisation, but their files are only candidates "
-            "until separately verified and promoted. You cannot edit the canonical repository or bypass the permission model. Use "
-            "only bounded verification commands. Include tests where feasible and report exact artefacts and check results."
+            "Operate under the canonical master brief. Build only after capability and portfolio discovery establishes a real gap. "
+            "Read existing code first, then create the smallest reusable candidate inside .agent-workspace. You may design additional "
+            "specialist agents, workflows, MCP adapters or services when needed by the target organisation, but their files are only "
+            "candidates until separately verified and promoted. Prefer adapting a selected mature project over reimplementing its "
+            "function. You cannot edit the canonical repository or bypass the permission model. Use only bounded verification "
+            "commands. Include tests where feasible and report exact artefacts and check results."
         ),
         tools=discovery_tools
+        + portfolio_tools
         + [
             tools["inspect_founderos"],
             tools["list_repo_tree"],
@@ -134,12 +164,13 @@ def build_agents(settings: Settings) -> AgentBundle:
         name="IndependentVerifier",
         description="Independent proof, challenge and failure-analysis agent.",
         instructions=(
-            "Operate under the canonical master brief. Independently verify Builder, Operator and architecture claims. Inspect the "
-            "capability catalogue, read candidate artefacts and rerun relevant bounded checks. Do not accept narrative evidence. "
-            "Classify each material claim as PROVEN, PARTIAL, BLOCKED, FAILED or PROPOSED, state evidence and remaining uncertainty, "
-            "and reject promotion when evidence is insufficient. You have no write authority."
+            "Operate under the canonical master brief. Independently verify Builder, Operator, Portfolio Architect and architecture "
+            "claims. Inspect the capability catalogue and relevant repository metadata, read candidate artefacts and rerun bounded "
+            "checks. Do not accept narrative evidence. Classify each material claim as PROVEN, PARTIAL, BLOCKED, FAILED or PROPOSED, "
+            "state evidence and remaining uncertainty, and reject promotion when evidence is insufficient. You have no write authority."
         ),
         tools=discovery_tools
+        + portfolio_tools
         + [
             tools["inspect_founderos"],
             tools["list_repo_tree"],
@@ -151,6 +182,7 @@ def build_agents(settings: Settings) -> AgentBundle:
 
     return AgentBundle(
         governor=governor,
+        portfolio_architect=portfolio_architect,
         systems_architect=systems_architect,
         dawn_operator=dawn_operator,
         capability_builder=capability_builder,
