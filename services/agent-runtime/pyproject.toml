@@ -9,6 +9,7 @@ description = "FounderOS orchestration nucleus built on Microsoft Agent Framewor
 requires-python = ">=3.11"
 dependencies = [
   "agent-framework-core==1.13.0",
+  "agent-framework-orchestrations==1.0.2",
   "agent-framework-ollama==1.0.0b260730",
   "fastapi>=0.116,<1",
   "httpx>=0.28,<1",
