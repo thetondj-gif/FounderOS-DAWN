@@ -15,12 +15,7 @@ DENIED_NAME_FRAGMENTS = (
     "id_ed25519",
 )
 
-CHECK_COMMANDS: dict[str, list[str]] = {
-    "python_compile": [sys.executable, "-m", "compileall", "-q", "."],
-    "pytest": [sys.executable, "-m", "pytest", "-q"],
-    "npm_test": ["npm", "test"],
-    "npm_typecheck": ["npm", "run", "typecheck"],
-}
+CHECK_NAMES = {"python_compile", "python_unittest_sandbox"}
 
 
 def resolve_inside(root: Path, relative_path: str) -> Path:
@@ -53,8 +48,49 @@ def workspace_path(workspace_root: Path, relative_path: str) -> Path:
     return path
 
 
-def check_command(name: str) -> list[str]:
-    try:
-        return list(CHECK_COMMANDS[name])
-    except KeyError as exc:
-        raise ValueError(f"unsupported check: {name}") from exc
+def check_command(name: str, workspace_root: Path) -> list[str]:
+    if name not in CHECK_NAMES:
+        raise ValueError(f"unsupported check: {name}")
+    if name == "python_compile":
+        # compileall parses bytecode but does not import or execute candidate modules.
+        return [sys.executable, "-m", "compileall", "-q", "."]
+
+    workspace = str(workspace_root.resolve())
+    # Candidate code executes only inside a constrained container. The workspace is
+    # mounted read-only; /tmp is the only writable filesystem and networking is disabled.
+    return [
+        "docker",
+        "run",
+        "--rm",
+        "--network",
+        "none",
+        "--cap-drop",
+        "ALL",
+        "--security-opt",
+        "no-new-privileges",
+        "--pids-limit",
+        "128",
+        "--memory",
+        "512m",
+        "--cpus",
+        "1",
+        "--read-only",
+        "--tmpfs",
+        "/tmp:rw,noexec,nosuid,size=64m",
+        "--user",
+        "65534:65534",
+        "-e",
+        "PYTHONDONTWRITEBYTECODE=1",
+        "-v",
+        f"{workspace}:/workspace:ro",
+        "-w",
+        "/workspace",
+        "python:3.12-slim",
+        "python",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tests",
+        "-v",
+    ]
