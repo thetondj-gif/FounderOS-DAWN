@@ -1,0 +1,43 @@
+name: Agent Runtime
+
+on:
+  push:
+    paths:
+      - 'services/agent-runtime/**'
+      - '.github/workflows/agent-runtime.yml'
+  pull_request:
+    paths:
+      - 'services/agent-runtime/**'
+      - '.github/workflows/agent-runtime.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: services/agent-runtime
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: services/agent-runtime/pyproject.toml
+
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e '.[dev]'
+
+      - name: Unit tests
+        run: python -m pytest
+
+      - name: Compile
+        run: python -m compileall -q founderos_agents
