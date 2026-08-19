@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import json
 import subprocess
-from pathlib import Path
 from typing import Any
 
 import httpx
@@ -99,16 +98,16 @@ def build_tools(settings: Settings) -> dict[str, Any]:
 
     @tool(approval_mode="never_require")
     def run_workspace_check(check: str) -> str:
-        """Run one fixed verification command in the isolated workspace: python_compile, pytest, npm_test, or npm_typecheck."""
+        """Run python_compile on the host or python_unittest_sandbox in a locked-down Docker container."""
         settings.workspace_root.mkdir(parents=True, exist_ok=True)
-        command = check_command(check)
+        command = check_command(check, settings.workspace_root)
         try:
             completed = subprocess.run(
                 command,
                 cwd=settings.workspace_root,
                 capture_output=True,
                 text=True,
-                timeout=120,
+                timeout=180,
                 shell=False,
                 check=False,
             )
