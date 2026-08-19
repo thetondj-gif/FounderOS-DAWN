@@ -17,11 +17,12 @@ The team is orchestrated with Microsoft Agent Framework `MagenticBuilder`.
 
 ## Safety boundary
 
-The initial nucleus is deliberately not allowed to edit the canonical repository or run arbitrary shell commands.
+The initial nucleus is deliberately not allowed to edit the canonical repository or run unrestricted host commands.
 
 - Repository tools are read-only and reject secret-like paths.
 - Candidate code is written only below `.agent-workspace/`.
-- Verification commands are selected from a fixed allowlist: `python_compile`, `pytest`, `npm_test`, `npm_typecheck`.
+- `python_compile` may run on the host because it parses/compiles without importing candidate modules.
+- Executable Python tests use `python_unittest_sandbox`, which runs in Docker with networking disabled, all Linux capabilities dropped, `no-new-privileges`, CPU/memory/PID limits, a read-only root filesystem and a read-only workspace mount.
 - The service binds to `127.0.0.1` by default.
 - Live connection failures are returned as failures, not converted into simulated success.
 
@@ -75,7 +76,7 @@ Stage 1 is complete when:
 1. `/readyz` proves both Ollama and the FounderOS agent API are reachable.
 2. A mission causes the Governor to delegate real inspection work.
 3. The Builder creates a candidate only inside `.agent-workspace/`.
-4. A bounded automated check actually executes.
+4. A bounded automated check actually executes, with executable candidate code confined to Docker.
 5. The Verifier independently classifies the outcome from evidence.
 
 It does **not** yet prove production deployment, autonomous PR creation, MCP publication, persistent workflow checkpoints or human approval. Those belong to the next gates after this nucleus is proven.
