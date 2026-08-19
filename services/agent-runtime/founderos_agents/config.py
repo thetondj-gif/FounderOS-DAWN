@@ -18,6 +18,8 @@ class Settings:
     founder_os_base_url: str
     request_timeout_seconds: float
     max_file_bytes: int
+    github_owner: str = "thetondj-gif"
+    github_token: str | None = None
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -33,4 +35,6 @@ class Settings:
             founder_os_base_url=os.environ.get("FOUNDER_OS_BASE_URL", "http://127.0.0.1:4100").rstrip("/"),
             request_timeout_seconds=float(os.environ.get("FOUNDER_AGENT_HTTP_TIMEOUT", "5")),
             max_file_bytes=int(os.environ.get("FOUNDER_AGENT_MAX_FILE_BYTES", "200000")),
+            github_owner=os.environ.get("FOUNDER_AGENT_GITHUB_OWNER", "thetondj-gif"),
+            github_token=os.environ.get("FOUNDER_AGENT_GITHUB_TOKEN") or None,
         )
