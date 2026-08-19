@@ -40,6 +40,28 @@ Proof layer
 8. Maintain tenant/data isolation, least privilege, secret hygiene and auditable execution.
 9. Prefer small independently verifiable increments over large opaque migrations.
 10. Business output matters. Technical work should shorten the path to real venture output, revenue, learning or reliability.
+11. Treat the founder's GitHub estate as a capability library. Audit owned repositories, forks and stars before building platform features from scratch.
+12. Do not merge every useful repository into one monolith. Prefer the best canonical component per responsibility, with adapters around mature services and extracted capabilities where appropriate.
+
+## GitHub estate assimilation
+The GitHub portfolio is an input to architecture, not a dumping ground. The Portfolio Architect must inventory all accessible owned repositories, forks and starred repositories and map them against the DAWN capability model.
+
+For each high-signal repository determine:
+- the capability/domain it provides
+- whether it is original work, a fork, upstream software, experiment, product or reference
+- project health: archived state, recency, licence, maintenance signals and likely operating cost
+- overlap with current DAWN/FounderOS capabilities
+- whether its value is best consumed as a service, adapter, extracted module, reference pattern or not at all
+
+Use exactly these dispositions for material candidates:
+- ADOPT_AS_SERVICE: run the mature project largely intact behind a DAWN adapter
+- INTEGRATE_VIA_ADAPTER: keep it external/canonical and expose a narrow typed/MCP/API capability
+- EXTRACT_CAPABILITY: reuse a small well-bounded part rather than importing the project
+- REFERENCE_ONLY: use architecture/patterns/knowledge but no runtime dependency
+- SUPERSEDED: current DAWN capability is stronger or already canonical
+- IGNORE: insufficient value, unsafe, obsolete, duplicative or uneconomic
+
+The Systems Architect must consume this portfolio map before recommending broad new infrastructure. The Capability Builder should only build where both the capability registry and GitHub estate fail to provide an acceptable solution.
 
 ## Required system domains
 The completed organisation must be able to create or coordinate specialist capability for:
@@ -61,13 +83,13 @@ The completed organisation must be able to create or coordinate specialist capab
 - Continuous system improvement and capability reuse
 
 ## Capability discovery rule
-Before proposing a build, search the capability registry and inspect live state. For every relevant capability determine:
+Before proposing a build, search the capability registry, GitHub portfolio and live state. For every relevant capability determine:
 - purpose and interface
 - whether it is merely known, installed, configured, connected or proven
 - cost and locality
 - permission tier
 - dependencies and health evidence
-- whether an existing capability can be adapted instead of duplicated
+- whether an existing capability or mature repository can be adapted instead of duplicated
 
 ## Permission model
 Tier 0 - discover metadata only
@@ -101,7 +123,7 @@ Creating an agent definition or tool file is not the same as adding a live capab
 ## Completion criteria
 The overall system is not complete until evidence demonstrates that:
 1. FounderOS can submit and observe real missions.
-2. The orchestrator can discover existing DAWN capabilities before building new ones.
+2. The orchestrator can discover existing DAWN capabilities and relevant portfolio projects before building new ones.
 3. Memory persists useful real mission/venture knowledge and can be retrieved across sessions.
 4. Specialist agents can collaborate on multi-step missions with bounded permissions.
 5. Missing capabilities can be built, tested, independently verified and promoted through a controlled path.
@@ -110,17 +132,27 @@ The overall system is not complete until evidence demonstrates that:
 8. Failures, unavailable integrations and uncertain states are surfaced rather than simulated.
 9. Model/cost routing can use local execution for routine work and escalate intentionally.
 10. Observability and proof are sufficient to reconstruct what the system did and why a result was accepted.
+11. The GitHub estate has a maintained adoption map so forks/stars are intentionally integrated, referenced, superseded or ignored rather than forgotten.
 
 ## Bootstrap mission
-First establish ground truth. Inventory the current FounderOS/DAWN repository, live APIs and capability registry. Map what is already operational, what is present but unproven, what is duplicated and what is missing. Produce a dependency-aware build plan ordered by leverage and risk. Then select the smallest missing capability that materially improves the system, build it only in the isolated workspace, test it, have the Independent Verifier reproduce the evidence, and report whether it is eligible for controlled promotion.
+First establish ground truth. Inventory the current FounderOS/DAWN repository, live APIs, capability registry and GitHub estate. Map what is already operational, what is present but unproven, what is duplicated and what is missing. Produce a dependency-aware build plan ordered by leverage and risk. Then select the smallest missing capability that materially improves the system, build it only in the isolated workspace, test it, have the Independent Verifier reproduce the evidence, and report whether it is eligible for controlled promotion.
 
 Do not attempt to rebuild the entire platform in one opaque pass. Continue through evidence-backed work packages until the completion criteria are met.
 """.strip()
 
 
 def mission_prompt(task: str) -> str:
-    return f"""{MASTER_BUILD_BRIEF}\n\n---\n\n## Current mission\n{task.strip()}\n\nExecute this mission under the master brief. Inspect live state and the capability catalogue before proposing new implementation."""
+    return f"""{MASTER_BUILD_BRIEF}\n\n---\n\n## Current mission\n{task.strip()}\n\nExecute this mission under the master brief. Inspect live state, the capability catalogue and the GitHub portfolio before proposing substantial new implementation."""
 
 
 def bootstrap_task() -> str:
     return "Execute the Bootstrap mission from the master build brief and return the first independently verified work package."
+
+
+def portfolio_audit_task() -> str:
+    return (
+        "Audit the complete accessible GitHub estate, including every owned repository, fork and starred repository. Page until the "
+        "inventory is complete. Build a DAWN capability map, inspect high-signal candidates deeply enough to determine licence and "
+        "integration approach, identify duplication, and assign each material candidate one canonical disposition. Then produce the "
+        "recommended target stack and the first integration work package for independent verification. Do not mutate GitHub."
+    )
