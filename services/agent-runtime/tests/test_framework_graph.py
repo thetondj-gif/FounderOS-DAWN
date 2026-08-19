@@ -21,6 +21,7 @@ def test_real_agent_framework_objects_construct_without_network(tmp_path: Path) 
     bundle = build_agents(_settings(tmp_path))
     assert bundle.governor.name == "FounderGovernor"
     assert [agent.name for agent in bundle.participants] == [
+        "PortfolioArchitect",
         "SystemsArchitect",
         "DawnOperator",
         "CapabilityBuilder",
