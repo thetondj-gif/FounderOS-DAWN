@@ -8,14 +8,15 @@ from fastapi import FastAPI, HTTPException, Query
 from pydantic import BaseModel, Field
 
 from .agents import role_catalog
-from .brief import MASTER_BUILD_BRIEF, bootstrap_task, portfolio_audit_task
+from .brief import MASTER_BUILD_BRIEF, bootstrap_task, launch_sprint_task, portfolio_audit_task
 from .capabilities import capability_catalog, get_capability
 from .config import Settings
+from .federation import delegate_google_task, inspect_google_federation
 from .portfolio import portfolio_snapshot
 from .workflow import run_mission
 
 
-app = FastAPI(title="FounderOS Agent Runtime", version="0.2.0")
+app = FastAPI(title="FounderOS Agent Runtime", version="0.3.0")
 
 
 class MissionRequest(BaseModel):
@@ -41,7 +42,8 @@ def healthz() -> dict[str, object]:
         "ok": True,
         "service": "founderos-agent-runtime",
         "framework": "microsoft-agent-framework",
-        "version": "0.2.0",
+        "version": "0.3.0",
+        "mode": "LAUNCH-FIRST",
         "model": settings.ollama_model,
         "brief": "DAWN / FounderOS Master Build Brief",
         "capability_count": len(capability_catalog()),
@@ -69,6 +71,7 @@ def brief() -> dict[str, object]:
         "brief": MASTER_BUILD_BRIEF,
         "bootstrap_task": bootstrap_task(),
         "portfolio_audit_task": portfolio_audit_task(),
+        "launch_sprint_task": launch_sprint_task(),
     }
 
 
@@ -103,6 +106,19 @@ def portfolio(max_pages: int = Query(default=10, ge=1, le=20)) -> dict[str, obje
         raise HTTPException(status_code=502, detail=f"portfolio read failed: {exc}") from exc
 
 
+@app.get("/federation/google")
+def google_federation_status() -> dict[str, object]:
+    return inspect_google_federation(_settings().request_timeout_seconds)
+
+
+@app.post("/federation/google/delegate")
+async def google_federation_delegate(request: MissionRequest) -> dict[str, object]:
+    try:
+        return await delegate_google_task(request.task.strip())
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"google federation delegation failed: {exc}") from exc
+
+
 @app.post("/missions/run")
 async def missions_run(request: MissionRequest) -> dict[str, object]:
     try:
@@ -125,6 +141,14 @@ async def missions_portfolio_audit() -> dict[str, object]:
         return await run_mission(portfolio_audit_task(), _settings())
     except Exception as exc:
         raise HTTPException(status_code=502, detail=f"portfolio audit mission execution failed: {exc}") from exc
+
+
+@app.post("/missions/launch-sprint")
+async def missions_launch_sprint() -> dict[str, object]:
+    try:
+        return await run_mission(launch_sprint_task(), _settings())
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"launch sprint mission execution failed: {exc}") from exc
 
 
 def run() -> None:
