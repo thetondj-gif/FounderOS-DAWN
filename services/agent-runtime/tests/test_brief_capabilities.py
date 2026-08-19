@@ -1,10 +1,18 @@
-from founderos_agents.brief import MASTER_BUILD_BRIEF, bootstrap_task, mission_prompt, portfolio_audit_task
+from founderos_agents.brief import (
+    MASTER_BUILD_BRIEF,
+    bootstrap_task,
+    launch_sprint_task,
+    mission_prompt,
+    portfolio_audit_task,
+)
 from founderos_agents.capabilities import capability_catalog, get_capability
 
 
 def test_master_brief_contains_architecture_permissions_and_completion_gates() -> None:
     assert "FounderOS" in MASTER_BUILD_BRIEF
     assert "Microsoft Agent Framework" in MASTER_BUILD_BRIEF
+    assert "Google Agent Development Kit" in MASTER_BUILD_BRIEF
+    assert "LAUNCH-FIRST" in MASTER_BUILD_BRIEF
     assert "DAWN OS" in MASTER_BUILD_BRIEF
     assert "GitHub estate assimilation" in MASTER_BUILD_BRIEF
     assert "ADOPT_AS_SERVICE" in MASTER_BUILD_BRIEF
@@ -21,6 +29,10 @@ def test_mission_prompt_always_injects_master_brief() -> None:
     assert bootstrap_task()
     assert "owned repository" in portfolio_audit_task()
     assert "starred repository" in portfolio_audit_task()
+    launch = launch_sprint_task()
+    assert "Deus Intus" in launch
+    assert "proposal" in launch.lower()
+    assert "Google ADK" in launch
 
 
 def test_capability_catalog_contains_core_stack_and_permission_metadata() -> None:
@@ -28,6 +40,8 @@ def test_capability_catalog_contains_core_stack_and_permission_metadata() -> Non
     required = {
         "founderos-api",
         "microsoft-agent-framework",
+        "google-adk-federation",
+        "a2a",
         "github",
         "github-portfolio",
         "ollama",
@@ -56,10 +70,13 @@ def test_capability_catalog_contains_core_stack_and_permission_metadata() -> Non
 def test_catalog_does_not_equate_known_with_live() -> None:
     github = get_capability("github")
     github_portfolio = get_capability("github-portfolio")
+    google_federation = get_capability("google-adk-federation")
     ollama = get_capability("ollama")
     assert github is not None and github["availability"] == "requires-adapter"
     assert github_portfolio is not None and github_portfolio["availability"] == "available"
     assert int(github_portfolio["permission_tier"]) == 1
+    assert google_federation is not None and google_federation["health_probe"] == "google-a2a"
+    assert "live readiness requires" in str(google_federation["notes"]).lower()
     assert ollama is not None and ollama["availability"] == "available"
     assert get_capability("does-not-exist") is None
 
