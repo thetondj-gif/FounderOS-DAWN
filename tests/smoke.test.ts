@@ -3,9 +3,6 @@ import { mkdtempSync, readdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
-// Pages read the DB path at first access, so point it at a fresh seeded temp DB
-// before any page module is imported. FUNNEL_PROVIDER keeps /funnel off the
-// live Attio API in tests.
 beforeAll(() => {
   process.env.FOUNDER_OS_DB = path.join(mkdtempSync(path.join(tmpdir(), 'founder-os-smoke-')), 'test.db');
   process.env.FUNNEL_PROVIDER = 'seed';
@@ -13,14 +10,11 @@ beforeAll(() => {
 });
 
 type PageEntry = {
-  file: string; // path relative to app/, the source of truth for coverage
-  // props is `any` so strongly-typed page components (e.g. /org's searchParams)
-  // remain assignable to this generic invoker.
+  file: string;
   load: () => Promise<{ default: (props?: any) => unknown }>;
   props?: unknown;
 };
 
-// Every app/**/page.tsx, with the props each needs to be invoked.
 const PAGES: PageEntry[] = [
   { file: 'page.tsx', load: () => import('@/app/page') },
   { file: 'comms/page.tsx', load: () => import('@/app/comms/page') },
@@ -30,6 +24,7 @@ const PAGES: PageEntry[] = [
   { file: 'content/page.tsx', load: () => import('@/app/content/page') },
   { file: 'content/lead-magnets/page.tsx', load: () => import('@/app/content/lead-magnets/page') },
   { file: 'agents/page.tsx', load: () => import('@/app/agents/page') },
+  { file: 'founder/page.tsx', load: () => import('@/app/founder/page') },
   { file: 'tasks/page.tsx', load: () => import('@/app/tasks/page') },
   { file: 'skills/page.tsx', load: () => import('@/app/skills/page') },
   { file: 'org/page.tsx', load: () => import('@/app/org/page'), props: { searchParams: {} } },
@@ -56,14 +51,9 @@ function discoverPages(dir: string, base = ''): string[] {
 }
 
 describe('platform smoke — every page renders without throwing', () => {
-  // 20s: pages that shell out to the gbrain CLI or distill the brain-store
-  // (/, /brain) legitimately exceed vitest's 5s default under a loaded
-  // parallel suite — this is a does-it-throw net, not a performance gate.
   test.each(PAGES)('$file renders', async ({ load, props }) => {
     const mod = await load();
     const Page = mod.default;
-    // Server components run their body (DB reads, data fetch) when invoked;
-    // a throw here is exactly the failure we want to catch.
     await expect(Promise.resolve(Page(props))).resolves.toBeTruthy();
   }, 20_000);
 
