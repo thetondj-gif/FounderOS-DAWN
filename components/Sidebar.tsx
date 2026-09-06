@@ -42,7 +42,11 @@ export function Sidebar() {
 
   return <aside className="fixed inset-y-0 left-0 z-20 hidden flex-col border-r border-os-border bg-os-bg2 md:flex" style={{ width: collapsed ? COLLAPSED_W : width }}>
     <div className={`flex pb-[18px] pt-5 ${collapsed ? 'flex-col items-center gap-2 px-0' : 'items-center justify-between px-[18px]'}`}>
-      {collapsed ? <OsMark size={30} className="shrink-0" /> : <div className="flex items-center gap-[11px]"><OsMark size={34} className="shrink-0" /><div><div className="text-[13px] font-bold tracking-[0.14em]">FOUNDER OS</div><div className="mt-[3px] whitespace-nowrap font-mono text-[9px] uppercase tracking-[0.16em] text-os-dim">v3 · Operator Mode</div></div></div>}
+      {collapsed ? (
+        <OsMark size={30} className="shrink-0" />
+      ) : (
+        <div className="flex items-center gap-[11px]"><OsMark size={34} className="shrink-0" /><div><div className="text-[13px] font-bold tracking-[0.14em]">FOUNDER OS</div><div className="mt-[3px] whitespace-nowrap font-mono text-[9px] uppercase tracking-[0.16em] text-os-dim">v3 · Operator Mode</div></div></div>
+      )}
       <button type="button" onClick={() => setCollapsed((c) => !c)} title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'} aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'} aria-expanded={!collapsed} className="flex h-7 w-7 shrink-0 items-center justify-center rounded-sm-t border border-transparent text-os-dim transition-colors hover:border-os-border hover:bg-os-surface2 hover:text-os-text"><PanelLeft className="h-[15px] w-[15px]" strokeWidth={1.7} /></button>
     </div>
     <nav className="flex flex-1 flex-col gap-0.5 overflow-y-auto px-2.5 pb-2"><NavGroup title="Operate" items={NAV_OPERATE} pathname={pathname} collapsed={collapsed} onTip={setTip} /><NavGroup title="Agents" items={NAV_AGENTS} pathname={pathname} collapsed={collapsed} onTip={setTip} /><NavGroup title="Intelligence" items={NAV_INTELLIGENCE} pathname={pathname} collapsed={collapsed} onTip={setTip} /><NavGroup title="System" items={NAV_SYSTEM} pathname={pathname} collapsed={collapsed} onTip={setTip} /><NavGroup title="Variants" items={NAV_LIBRARY} pathname={pathname} collapsed={collapsed} onTip={setTip} /></nav>
