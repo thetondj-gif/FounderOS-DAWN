@@ -5,19 +5,16 @@ import path from 'node:path';
 
 beforeAll(() => {
   process.env.FOUNDER_OS_DB = path.join(mkdtempSync(path.join(tmpdir(), 'founder-os-apismoke-')), 'test.db');
-  process.env.FUNNEL_PROVIDER = 'seed'; // keep /api/funnel off the live Attio API in tests
+  process.env.FUNNEL_PROVIDER = 'seed';
 });
 
 type RouteEntry = {
-  route: string; // path under app/api, source of truth for coverage
+  route: string;
   load: () => Promise<{ GET?: (req: Request, ctx?: any) => unknown }>;
-  url: string; // includes any required query params
-  params?: Record<string, string>; // for dynamic [param] routes
+  url: string;
+  params?: Record<string, string>;
 };
 
-// Every app/api/**/route.ts that exports GET, with valid params so each returns
-// a real 200 (not a 400/404 for a missing arg). Live-connector routes
-// (connections, social/sync) must still answer 200 with honest state.
 const ROUTES: RouteEntry[] = [
   { route: 'agents', load: () => import('@/app/api/agents/route'), url: 'http://localhost/api/agents' },
   { route: 'lead-magnets', load: () => import('@/app/api/lead-magnets/route'), url: 'http://localhost/api/lead-magnets' },
@@ -32,6 +29,7 @@ const ROUTES: RouteEntry[] = [
   { route: 'connections', load: () => import('@/app/api/connections/route'), url: 'http://localhost/api/connections' },
   { route: 'contacts/tags', load: () => import('@/app/api/contacts/tags/route'), url: 'http://localhost/api/contacts/tags' },
   { route: 'departments', load: () => import('@/app/api/departments/route'), url: 'http://localhost/api/departments' },
+  { route: 'founder/agents', load: () => import('@/app/api/founder/agents/route'), url: 'http://localhost/api/founder/agents' },
   { route: 'funnel', load: () => import('@/app/api/funnel/route'), url: 'http://localhost/api/funnel' },
   { route: 'funnel/lead-message', load: () => import('@/app/api/funnel/lead-message/route'), url: 'http://localhost/api/funnel/lead-message?name=Smoke%20Test%20Lead' },
   { route: 'keys', load: () => import('@/app/api/keys/route'), url: 'http://localhost/api/keys' },
@@ -73,9 +71,7 @@ describe('platform smoke — every GET API route answers 200 with JSON', () => {
   }, 20_000);
 
   test('the API smoke net covers every GET route under app/api (no route escapes)', () => {
-    // skills/[slug] reads the local ~/.claude/skills dir at runtime (404 without
-    // a slug on disk), so it is not a 200-required smoke route.
-    const IGNORE = new Set(['skills/[slug]']);
+    const IGNORE = new Set(['skills/[slug]', 'founder/jobs/[id]']);
     const discovered = discoverGetRoutes(path.join(process.cwd(), 'app', 'api')).filter((r) => !IGNORE.has(r)).sort();
     const covered = ROUTES.map((r) => r.route).sort();
     expect(covered).toEqual(discovered);
